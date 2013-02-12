@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,11 +17,8 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.WritableComparable;
-import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -42,21 +40,24 @@ public class Ngram {
 	 }
 	
 	public static class NgramMapper extends
-			Mapper<LongWritable, Text, TextIntPair, TextIntPair> {
+			Mapper<LongWritable, Text, NullWritable, TextIntPair> {
 		
 		private HashSet<String> query; 
+		private TreeSet<TextIntPair> treeSet;
 		private int n;
-		private TextIntPair current = new TextIntPair();
+		private int k;
 
 		@Override
-		public void setup(Context context) {
+		protected void setup(Context context) {
 			Configuration conf = context.getConfiguration();
 			query = new HashSet<String>(Arrays.asList(conf.get("query").split(",")));
 			n = conf.getInt("n", 0);
+			k = conf.getInt("k", 0);
+			treeSet = new TreeSet<TextIntPair>();
 		}
 	
 		@Override
-		public void map(LongWritable key, Text value, Context context)
+		protected void map(LongWritable key, Text value, Context context)
 				throws IOException, InterruptedException {
 			String page = value.toString();
 			String title = null;
@@ -85,54 +86,43 @@ public class Ngram {
 				}
 			}
 			if (cnt > 0) {
-				current.getFirst().set(title);
-				current.getSecond().set(cnt);
-				context.write(current, current);
+				treeSet.add(new TextIntPair(new Text(title), new IntWritable(cnt)));
+				while (treeSet.size() > k) {
+					treeSet.remove(treeSet.last());
+				}
 			}
 		}
-	}
-	public static class NgramPartitioner extends Partitioner<TextIntPair, TextIntPair> {
-		@Override
-		public int getPartition(TextIntPair key, TextIntPair value, int numPartitions) {
-			return 0;
-		}
-	}
-
-	public static class KeyComparator extends WritableComparator {
-		protected KeyComparator() {
-			super(TextIntPair.class, true);
-		}
-	}
-	
-	public static class GroupComparator extends WritableComparator {
-		protected GroupComparator() {
-			super(TextIntPair.class, true);
-		}
-		
-		@Override
-		@SuppressWarnings("unchecked")
-		public int compare(WritableComparable w1, WritableComparable w2) {
-			return 0;
+		protected void cleanup(Context context) {
+			for (TextIntPair topPage : treeSet) {
+				context.write(NullWritable.get(), topPage);
+			}
 		}
 	}
 	
 	public static class NgramReducer extends
-			Reducer<TextIntPair, TextIntPair, Text, IntWritable> {
-
+			Reducer<NullWritable, TextIntPair, Text, IntWritable> {
+		private TreeSet<TextIntPair> treeSet;
 		private int k;
+
 		@Override
-		public void setup(Context context) {
-			k = context.getConfiguration().getInt("topk", 0);
+		protected void setup(Context context) {
+			k = context.getConfiguration().getInt("k", 0);
+			treeSet = new TreeSet<TextIntPair>();
 		}
 		@Override
-		public void reduce(TextIntPair key, Iterable<TextIntPair> values,
+		public void reduce(NullWritable key, Iterable<TextIntPair> values,
 				Context context) throws IOException, InterruptedException {
-			int cnt = 0;
 			for (TextIntPair w : values) {
-				if (cnt >= k)
-					break;
-				context.write(w.getFirst(), w.getSecond());
-				cnt++;
+				treeSet.add(w);
+				while (treeSet.size() > k) {
+					treeSet.remove(treeSet.last());
+				}
+			}
+		}
+		@Override
+		protected void cleanup(Context context) throws IOException, InterruptedException {
+			for (TextIntPair topPage : treeSet) {
+				context.write(topPage.getFirst(), topPage.getSecond());
 			}
 		}
 	}
@@ -158,7 +148,7 @@ public class Ngram {
 			}
 			if (ngram.size() == n) {
 				query.add(stringJoin(ngram, " "));
-			}	
+			}
 		}
 		return query;
 	}
@@ -172,9 +162,8 @@ public class Ngram {
 		
 		int n = Integer.parseInt(args[0]);
 		conf.setInt("n", n);
-		conf.setInt("topk", 20);
-		HashSet<String> query = readQuery(n, new Path(args[1]), conf);
-		conf.set("query", stringJoin(query, ","));
+		conf.setInt("k", 20);
+		conf.set("query", stringJoin(readQuery(n, new Path(args[1]), conf), ","));
 		conf.set("xmlStart", "<page>");
 		conf.set("xmlEnd", "</page>");
 		
@@ -183,13 +172,10 @@ public class Ngram {
 		
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
-		job.setMapOutputKeyClass(TextIntPair.class);
+		job.setMapOutputKeyClass(NullWritable.class);
 		job.setMapOutputValueClass(TextIntPair.class);
 
 		job.setMapperClass(NgramMapper.class);
-		job.setPartitionerClass(NgramPartitioner.class);
-		job.setSortComparatorClass(KeyComparator.class);
-		job.setGroupingComparatorClass(GroupComparator.class);
 		job.setReducerClass(NgramReducer.class);
 
 		job.setInputFormatClass(XmlInputFormat.class);

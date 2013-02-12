@@ -25,11 +25,6 @@ public class TextIntPair implements WritableComparable<TextIntPair> {
 		second = new IntWritable();
 	}
 
-	public TextIntPair(String first, String second) {
-
-		this(new Text(first), new IntWritable(Integer.valueOf(second)));
-	}
-
 	public TextIntPair(Text first, IntWritable second) {
 		this.first = first;
 		this.second = second;

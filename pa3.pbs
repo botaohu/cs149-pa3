@@ -1,0 +1,19 @@
+#!/bin/sh
+
+########### UPDATE THESE VARIABLES ###############
+# the directory where your files are
+pa2_home=$HOME/pa2/
+##################################################
+
+######### ADD YOUR EXECUTION SCRIPT HERE #########
+cd $pa2_home
+# Clean up the directory
+find . -name '*.class' -print0 | xargs -0 rm -f
+# Compile the program
+find . -name '*.java' -print0 | xargs -0 javac -cp .
+# Run the program
+hadoop	--config	conf	fs	-mkdir	input
+hadoop	--config	conf	fs	-put	query1.txt input
+hadoop	--config	conf	fs	-put	query2.txt input
+hadoop	--config	conf	fs	-put	chunk_aa input
+hadoop jar ngram.jar Ngram 4 query1.txt /wikipedia/all outputhadoop jar ngram.jar Ngram 4 query2.txt /wikipedia/all output
