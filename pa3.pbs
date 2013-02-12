@@ -2,18 +2,30 @@
 
 ########### UPDATE THESE VARIABLES ###############
 # the directory where your files are
-pa2_home=$HOME/pa2/
+pa3_home=$HOME/pa3/
 ##################################################
 
 ######### ADD YOUR EXECUTION SCRIPT HERE #########
-cd $pa2_home
+cd $pa3_home
+export HADOOP_HOME=/usr/local/hadoop-1.1.1
+export JAVA_HOME=/usr/lib/jvm/java-6-openjdk-amd64
 # Clean up the directory
 find . -name '*.class' -print0 | xargs -0 rm -f
-# Compile the program
-find . -name '*.java' -print0 | xargs -0 javac -cp .
-# Run the program
-hadoop	--config	conf	fs	-mkdir	input
-hadoop	--config	conf	fs	-put	query1.txt input
-hadoop	--config	conf	fs	-put	query2.txt input
-hadoop	--config	conf	fs	-put	chunk_aa input
-hadoop jar ngram.jar Ngram 4 query1.txt /wikipedia/all outputhadoop jar ngram.jar Ngram 4 query2.txt /wikipedia/all output
+# Compile the program-cp .
+find . -name '*.java' -print0 | xargs -0 javac \
+–cp ${HADOOP_HOME}/hadoop-common-1.1.1.jar:\
+${HADOOP_HOME}/hadoop-hdfs-1.1.1.jar:\
+${HADOOP_HOME}/hadoop-mapred-1.1.1.jar	\
+–d class_dir *.java
+
+hadoop fs -rmr input
+hadoop fs -mkdir input
+hadoop fs -put query1.txt input
+hadoop fs -put query2.txt input
+hadoop fs -rmr output1
+hadoop fs -rmr output2
+#hadoop jar ngram.jar Ngram 4 input/query1.txt /wikipedia/all output1
+#hadoop jar ngram.jar Ngram 4 input/query2.txt /wikipedia/all output2
+#hadoop fs -cat output1/*
+#hadoop fs -cat output2/*
+
