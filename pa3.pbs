@@ -27,6 +27,6 @@ hadoop fs -rmr output1
 hadoop fs -rmr output2
 hadoop jar ngram.jar Ngram 4 input/query1.txt /wikipedia/all output1
 hadoop jar ngram.jar Ngram 4 input/query2.txt /wikipedia/all output2
-hadoop fs -cat output1/*
-hadoop fs -cat output2/*
+hadoop fs -cat output1/part*
+hadoop fs -cat output2/part*
 
