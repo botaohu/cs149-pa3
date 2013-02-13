@@ -86,9 +86,11 @@ public class Ngram {
 					}
 				}
 			}
-			treeSet.add(new TextIntPair(new Text(title), new IntWritable(cnt)));
-			while (treeSet.size() > k) {
-				treeSet.remove(treeSet.last());
+			if (cnt > 0) {
+				treeSet.add(new TextIntPair(new Text(title), new IntWritable(cnt)));
+				while (treeSet.size() > k) {
+					treeSet.remove(treeSet.last());
+				}
 			}
 		}
 
@@ -115,7 +117,7 @@ public class Ngram {
 		public void reduce(NullWritable key, Iterable<TextIntPair> values,
 				Context context) throws IOException, InterruptedException {
 			for (TextIntPair w : values) {
-				treeSet.add(w);
+				treeSet.add(new TextIntPair(new Text(w.getFirst()), new IntWritable(w.getSecond().get())));
 				while (treeSet.size() > k) {
 					treeSet.remove(treeSet.last());
 				}
