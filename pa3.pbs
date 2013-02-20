@@ -1,3 +1,4 @@
+
 #!/bin/sh
 
 ########### UPDATE THESE VARIABLES ###############
@@ -19,14 +20,20 @@ ${HADOOP_HOME}/hadoop-core-1.1.1.jar	\
 -d class_dir
 jar -cvf ngram.jar -C class_dir/ .
 
-hadoop fs -rmr input
+
+
+mkdir output1 
+mkdir output2
 hadoop fs -mkdir input
 hadoop fs -put query1.txt input
 hadoop fs -put query2.txt input
 hadoop fs -rmr output1
-hadoop fs -rmr output2
 hadoop jar ngram.jar Ngram 4 input/query1.txt /wikipedia/all output1
-hadoop jar ngram.jar Ngram 4 input/query2.txt /wikipedia/all output2
 hadoop fs -cat output1/part*
+hadoop fs -get output1/part* output1
+hadoop fs -rmr output2
+hadoop jar ngram.jar Ngram 4 input/query2.txt /wikipedia/all output2
 hadoop fs -cat output2/part*
+hadoop fs -get output2/part* output2
+
 

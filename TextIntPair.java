@@ -47,7 +47,7 @@ public class TextIntPair implements WritableComparable<TextIntPair> {
 	public int compareTo(TextIntPair that) {
 		int cmp = -second.compareTo(that.second);
 		if (cmp == 0) {
-			return first.compareTo(that.first);
+			return -first.compareTo(that.first);
 		}
 		return cmp;
 	}
